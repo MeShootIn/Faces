@@ -8,18 +8,12 @@
 
 
 
-/*
-printLogDuring("Closest vector not found", during, RESULT_CODE::NOT_FOUND, logger);
-
-printLogDuring("Ñould not find the closest vector", during, RESULT_CODE::NOT_FOUND, logger);
-*/
-
 namespace {
 typedef std::vector <IVector const *>::iterator setIterator;
 
 class Loggable {
 public:
-    Loggable(ILogger * pLogger);
+    explicit Loggable(ILogger * pLogger);
     virtual ~Loggable() = 0;
     static RESULT_CODE printLog(char const * pMsg, RESULT_CODE err, ILogger * pLogger);
     static RESULT_CODE printLogDuring(char const * pMsg, char const * during, RESULT_CODE err, ILogger * pLogger);
@@ -28,6 +22,8 @@ public:
     ILogger * logger;
 
 private:
+    Loggable() = delete;
+
     static RESULT_CODE printFormatted(FILE * logStream, char const * pMsg, RESULT_CODE err);
 };
 
@@ -47,14 +43,14 @@ public:
     ISet * clone() const override;
 
     static Set * createSet(ILogger * pLogger);
-    void insert(const IVector * pVector);
 
 private:
-    Set(ILogger * logger);
+    explicit Set(ILogger * logger);
     Set(Set const & anotherSet) = delete;
     Set & operator = (Set const & anotherSet) = delete;
 
     setIterator findFirstClosest(IVector const * pSample, IVector::NORM norm, double tolerance) const;
+    void insert(const IVector * pVector);
 
     mutable std::vector <IVector const *> set;
 };
@@ -114,7 +110,7 @@ char const Loggable::ErrorName[][30] = {
 
 /* Secondary functions */
 
-bool operandsAreNullptr(ISet const * pOperand1, ISet const * pOperand2, char const * during, ILogger * pLogger) {
+bool operandsAreNullptr(void const * pOperand1, void const * pOperand2, char const * during, ILogger * pLogger) {
     if(pOperand1 == nullptr || pOperand2 == nullptr) {
         if(pOperand1 == nullptr && pOperand2 != nullptr) {
             Loggable::printLogDuring("First operand turned out to be equal to nullptr", during,
@@ -182,7 +178,7 @@ void Set::insert(const IVector * pVector) {
     set.push_back(pVector);
 }
 
-RESULT_CODE Set::insert(const IVector * pVector, IVector::NORM norm, double tolerance) {
+RESULT_CODE Set::insert(IVector const * pVector, IVector::NORM norm, double tolerance) {
     char const * during = "ISet::insert";
 
     if(pVector == nullptr) {
@@ -361,7 +357,7 @@ ISet * Set::clone() const {
             return copy = nullptr;
         }
 
-        copy->insert(vector->clone());
+        copy->insert(cloned);
     }
 
     return copy;
@@ -453,23 +449,24 @@ ISet * ISet::intersect(
     ISet * intersection = ISet::createSet(pLogger);
 
     if(intersection == nullptr) {
-        Loggable::printLogDuring("Failed to create set intersection", during, RESULT_CODE::OUT_OF_MEMORY, pLogger);
+        Loggable::printLogDuring("Failed to create intersection set", during, RESULT_CODE::OUT_OF_MEMORY, pLogger);
 
         return nullptr;
     }
 
-    IVector * vector = nullptr, * vectorFound = nullptr;
+    IVector * vector = nullptr,
+            * vectorFounded = nullptr;
 
     for(size_t i = 0; i < pOperand1->getSize(); ++i) {
         pOperand1->get(vector, i);
 
-        RESULT_CODE result = pOperand2->get(vectorFound, vector, norm, tolerance);
+        RESULT_CODE result = pOperand2->get(vectorFounded, vector, norm, tolerance);
 
         if(result == RESULT_CODE::SUCCESS) {
             intersection->insert(vector, norm, tolerance);
 
-            delete vectorFound;
-            vectorFound = nullptr;
+            delete vectorFounded;
+            vectorFounded = nullptr;
         }
 
         delete vector;
@@ -503,12 +500,13 @@ ISet * ISet::sub(
     ISet * diff = ISet::createSet(pLogger);
 
     if(diff == nullptr) {
-        Loggable::printLogDuring("Failed to create set difference", during, RESULT_CODE::OUT_OF_MEMORY, pLogger);
+        Loggable::printLogDuring("Failed to create difference set", during, RESULT_CODE::OUT_OF_MEMORY, pLogger);
 
         return nullptr;
     }
 
-    IVector * vector = nullptr, * vectorFound = nullptr;
+    IVector * vector = nullptr,
+            * vectorFound = nullptr;
 
     for(size_t i = 0; i < pOperand1->getSize(); ++i) {
         pOperand1->get(vector, i);

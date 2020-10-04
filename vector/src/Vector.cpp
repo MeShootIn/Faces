@@ -10,7 +10,7 @@
 namespace {
 class Loggable {
 public:
-    Loggable(ILogger * pLogger);
+    explicit Loggable(ILogger * pLogger);
     virtual ~Loggable() = 0;
     static RESULT_CODE printLog(char const * pMsg, RESULT_CODE err, ILogger * pLogger);
     static RESULT_CODE printLogDuring(char const * pMsg, char const * during, RESULT_CODE err, ILogger * pLogger);
@@ -19,6 +19,8 @@ public:
     ILogger * logger;
 
 private:
+    Loggable() = delete;
+
     static RESULT_CODE printFormatted(FILE * logStream, char const * pMsg, RESULT_CODE err);
 };
 
@@ -100,7 +102,7 @@ char const Loggable::ErrorName[][30] = {
 
 /* Secondary functions */
 
-bool operandsAreNullptr(IVector const * pOperand1, IVector const * pOperand2, char const * during, ILogger * pLogger) {
+bool operandsAreNullptr(void const * pOperand1, void const * pOperand2, char const * during, ILogger * pLogger) {
     if(pOperand1 == nullptr || pOperand2 == nullptr) {
         if(pOperand1 == nullptr && pOperand2 != nullptr) {
             Loggable::printLogDuring("First operand turned out to be equal to nullptr", during,
@@ -146,10 +148,7 @@ IVector * IVector::createVector(size_t dim, double * pData, ILogger * pLogger) {
 IVector * IVector::add(IVector const * pOperand1, IVector const * pOperand2, ILogger * pLogger) {
     char const * during = "IVector::add";
 
-    if(
-       operandsAreNullptr(pOperand1, pOperand2, during, pLogger) ||
-       !equalDims(pOperand1, pOperand2, during, pLogger)
-       ) {
+    if(operandsAreNullptr(pOperand1, pOperand2, during, pLogger) || !equalDims(pOperand1, pOperand2, during, pLogger)) {
         return nullptr;
     }
 
@@ -163,7 +162,7 @@ IVector * IVector::add(IVector const * pOperand1, IVector const * pOperand2, ILo
 
     for(size_t i = 0; i < pOperand1->getDim(); ++i) {
         if(result->setCoord(i, pOperand1->getCoord(i) + pOperand2->getCoord(i)) != RESULT_CODE::SUCCESS) {
-            Loggable::printLogDuring("Failed to sum coordinates", during, RESULT_CODE::CALCULATION_ERROR, pLogger);
+            Loggable::printLogDuring("Failed to add coordinates", during, RESULT_CODE::CALCULATION_ERROR, pLogger);
 
             delete result;
             result = nullptr;
@@ -178,26 +177,23 @@ IVector * IVector::add(IVector const * pOperand1, IVector const * pOperand2, ILo
 IVector * IVector::sub(IVector const * pOperand1, IVector const * pOperand2, ILogger * pLogger) {
     char const * during = "IVector::sub";
 
-    if(
-       operandsAreNullptr(pOperand1, pOperand2, during, pLogger) ||
-       !equalDims(pOperand1, pOperand2, during, pLogger)
-       ) {
+    if(operandsAreNullptr(pOperand1, pOperand2, during, pLogger) || !equalDims(pOperand1, pOperand2, during, pLogger)) {
         return nullptr;
     }
 
-    IVector * pOperand1Inversed = IVector::mul(pOperand1, -1, pLogger);
+    IVector * pOperand2Inversed = IVector::mul(pOperand2, -1, pLogger);
 
-    if(pOperand1Inversed == nullptr) {
+    if(pOperand2Inversed == nullptr) {
         Loggable::printLogDuring("Failed to multiply first operand by -1", during, RESULT_CODE::CALCULATION_ERROR,
                                  pLogger);
 
         return nullptr;
     }
 
-    IVector * result = IVector::add(pOperand1Inversed, pOperand2, pLogger);
+    IVector * result = IVector::add(pOperand1, pOperand2Inversed, pLogger);
 
-    delete pOperand1Inversed;
-    pOperand1Inversed = nullptr;
+    delete pOperand2Inversed;
+    pOperand2Inversed = nullptr;
 
     if(result == nullptr) {
         Loggable::printLogDuring("Failed to add vectors", during, RESULT_CODE::CALCULATION_ERROR, pLogger);
@@ -219,7 +215,7 @@ IVector * IVector::mul(IVector const * pOperand1, double scaleParam, ILogger * p
     }
 
     if(std::isnan(scaleParam)) {
-        Loggable::printLogDuring("The scalar (second operand) turned out to be equal to NaN", during,
+        Loggable::printLogDuring("Second operand (scalar) turned out to be equal to NaN", during,
                                  RESULT_CODE::NAN_VALUE, pLogger);
 
         return nullptr;
@@ -228,7 +224,7 @@ IVector * IVector::mul(IVector const * pOperand1, double scaleParam, ILogger * p
     IVector * result = pOperand1->clone();
 
     if(result == nullptr) {
-        Loggable::printLogDuring("Failed to clone first operand", during, RESULT_CODE::OUT_OF_MEMORY, pLogger);
+        Loggable::printLogDuring("Failed to clone first operand (vector)", during, RESULT_CODE::OUT_OF_MEMORY, pLogger);
 
         return nullptr;
     }
@@ -254,7 +250,7 @@ double IVector::mul(IVector const * pOperand1, IVector const * pOperand2, ILogge
         return std::numeric_limits <double>::quiet_NaN();
     }
 
-    double result = 0;
+    double result = 0.;
 
     for(size_t i = 0; i < pOperand1->getDim(); ++i) {
         result += pOperand1->getCoord(i) * pOperand2->getCoord(i);
@@ -271,6 +267,10 @@ RESULT_CODE IVector::equals(IVector const * pOperand1, IVector const * pOperand2
         return RESULT_CODE::BAD_REFERENCE;
     }
 
+    if(!equalDims(pOperand1, pOperand2, during, pLogger)) {
+        return RESULT_CODE::WRONG_DIM;
+    }
+
     if(std::isnan(tolerance)) {
         return Loggable::printLogDuring("Tolerance equal to NaN is passed", during, RESULT_CODE::NAN_VALUE, pLogger);
     }
@@ -278,10 +278,6 @@ RESULT_CODE IVector::equals(IVector const * pOperand1, IVector const * pOperand2
     if(tolerance < 0) {
         return Loggable::printLogDuring("Tolerance less than zero is passed", during, RESULT_CODE::WRONG_ARGUMENT,
                                         pLogger);
-    }
-
-    if(!equalDims(pOperand1, pOperand2, during, pLogger)) {
-        return RESULT_CODE::WRONG_DIM;
     }
 
     IVector * diff = IVector::sub(pOperand1, pOperand2, pLogger);
@@ -341,7 +337,7 @@ RESULT_CODE Vector::setCoord(size_t index, double value) {
     }
 
     if(std::isnan(value)) {
-        return printLogDuring("Coord index is equal to NaN", during, RESULT_CODE::NAN_VALUE, logger);
+        return printLogDuring("Coord value is equal to NaN", during, RESULT_CODE::NAN_VALUE, logger);
     }
 
     coords[index] = value;
@@ -351,7 +347,7 @@ RESULT_CODE Vector::setCoord(size_t index, double value) {
 
 double Vector::norm(NORM norm) const {
     char const * during = "IVector::norm";
-    double normResult = 0;
+    double normResult = 0.;
 
     switch(norm) {
     case NORM::NORM_1: {

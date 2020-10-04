@@ -1,4 +1,2 @@
-SUCCESS: 1
-SUCCESS: 2
-SUCCESS: 3
-SUCCESS: Hello, World!
+SUCCESS: Start
+SUCCESS: Finish

@@ -1,0 +1,7 @@
+NAN_VALUE: NaN vector component was found during "IVector::createVector"
+BAD_REFERENCE: Trying to create a vector with nullptr coordinates array during "IVector::createVector"
+NAN_VALUE: Second operand (scalar) turned out to be equal to NaN during "IVector::mul"
+OUT_OF_BOUNDS: Index of vector in set out of bounds during "IVector::getCoord"
+WRONG_DIM: Trying to create a zero-dimensional vector during "IVector::createVector"
+OUT_OF_BOUNDS: Error in setting coord index during "IVector::setCoord"
+NAN_VALUE: Coord value is equal to NaN during "IVector::setCoord"

@@ -51,6 +51,12 @@ bool equalVectors(IVector * vector1, IVector * vector2) {
 }
 
 void printVector(IVector const * const vector) {
+    if(vector == nullptr) {
+        cout << "Passed vector == nullptr to printVector\n";
+
+        return;
+    }
+
     for(size_t i = 0; i < vector->getDim(); ++i) {
         cout << vector->getCoord(i) << " ";
     }

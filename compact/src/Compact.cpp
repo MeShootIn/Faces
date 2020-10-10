@@ -262,6 +262,18 @@ bool checkUnique(IVector const * const vector, size_t idx) {
     return true;
 }
 
+bool hasNaNCoord(IVector * vector, char const * during, ILogger * pLogger) {
+    for(size_t i = 0; i < vector->getDim(); ++i) {
+        if(std::isnan(vector->getCoord(i))) {
+            Loggable::printLogDuring("Passed vector with NaN coordinate", during, RESULT_CODE::NAN_VALUE, pLogger);
+
+            return true;
+        }
+    }
+
+    return false;
+}
+
 
 
 /* ICompact */
@@ -294,6 +306,13 @@ Compact * Compact::createCompact(IVector const * const begin, IVector const * co
 
     auto clonedBegin = const_cast <IVector *> (begin)->clone();
 
+    if(hasNaNCoord(clonedBegin, during, logger)) {
+        delete clonedBegin;
+        clonedBegin = nullptr;
+
+        return nullptr;
+    }
+
     if(clonedBegin == nullptr) {
         printLogDuring("Failed to clone vector", during, RESULT_CODE::OUT_OF_MEMORY, logger);
 
@@ -302,10 +321,17 @@ Compact * Compact::createCompact(IVector const * const begin, IVector const * co
 
     auto clonedEnd = const_cast <IVector *> (end)->clone();
 
-    if(clonedEnd == nullptr) {
+    if(hasNaNCoord(clonedEnd, during, logger)) {
         delete clonedBegin;
-        clonedBegin = nullptr;
+        delete clonedEnd;
 
+        clonedBegin = nullptr;
+        clonedEnd = nullptr;
+
+        return nullptr;
+    }
+
+    if(clonedEnd == nullptr) {
         printLogDuring("Failed to clone vector", during, RESULT_CODE::OUT_OF_MEMORY, logger);
 
         return nullptr;
@@ -412,8 +438,8 @@ RESULT_CODE Compact::isSubSet(ICompact const * const other, bool & result) const
     }
 
     if(other->getDim() != getDim()) {
-        return printLogDuring("The dimensions of the current and passed compact are not equal", during, RESULT_CODE::WRONG_DIM,
-                              logger);
+        return printLogDuring("The dimensions of the current and passed compact are not equal", during,
+                              RESULT_CODE::WRONG_DIM, logger);
     }
 
     bool iscontains;

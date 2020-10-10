@@ -370,9 +370,8 @@ setIterator Set::findFirstClosest(IVector const * pSample, IVector::NORM norm, d
         return ERROR;
     }
 
-    bool result = false;
-
     for(setIterator it = set.begin(); it != set.end(); ++it) {
+        bool result = false;
         RESULT_CODE equalsResult = IVector::equals(pSample, *it, norm, tolerance, &result, logger);
 
         if(equalsResult == RESULT_CODE::SUCCESS && result) {
@@ -464,12 +463,12 @@ ISet * ISet::intersect(
 
         if(result == RESULT_CODE::SUCCESS) {
             intersection->insert(vector, norm, tolerance);
-
-            delete vectorFounded;
-            vectorFounded = nullptr;
         }
 
+        delete vectorFounded;
         delete vector;
+
+        vectorFounded = nullptr;
         vector = nullptr;
     }
 
@@ -518,9 +517,9 @@ ISet * ISet::sub(
         }
 
         delete vectorFound;
-        vectorFound = nullptr;
-
         delete vector;
+
+        vectorFound = nullptr;
         vector = nullptr;
     }
 
@@ -553,10 +552,10 @@ ISet * ISet::symSub(
     ISet * symsub = ISet::sub(sum, intersection, norm, tolerance, pLogger);
 
     delete sum;
-    sum = nullptr;
-
     delete intersection;
+
     intersection = nullptr;
+    sum = nullptr;
 
     return symsub;
 }
